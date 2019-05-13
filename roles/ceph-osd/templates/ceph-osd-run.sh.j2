@@ -12,6 +12,10 @@ DOCKER_ENV=""
 #############
 # FUNCTIONS #
 #############
+function id_to_device () {
+OSD_DEVICE=$(docker run --rm --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph:z --entrypoint ceph-disk {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} list | grep ", osd\.${1}," | awk '{ print $1 }')
+}
+
 function expose_partitions () {
 DOCKER_ENV=$(docker run --rm --net=host --name expose_partitions_${1} --privileged=true -v /dev/:/dev/ -v /etc/ceph:/etc/ceph:z -e CLUSTER={{ cluster }} -e OSD_DEVICE=/dev/${1} {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }} disk_list)
 }
@@ -54,7 +58,8 @@ function expose_partitions {
 
 {% endif -%}
 
-expose_partitions "$1"
+id_to_device "$1"
+expose_partitions "${OSD_DEVICE:5:-1}"
 
 # discover osd_objectstore for ceph-disk based osds
 if [[ $DOCKER_ENV =~ "BLUESTORE" ]]; then
@@ -122,12 +127,11 @@ numactl \
   -v /run/lvm/lvmetad.socket:/run/lvm/lvmetad.socket \
   -e CEPH_DAEMON=OSD_CEPH_VOLUME_ACTIVATE \
   -e OSD_ID="$1" \
-  --name=ceph-osd-"$1" \
   {% else -%}
   $DOCKER_ENV \
   -e CEPH_DAEMON=OSD_CEPH_DISK_ACTIVATE \
-  -e OSD_DEVICE=/dev/"${1}" \
-  --name=ceph-osd-{{ ansible_hostname }}-"${1}" \
+  -e OSD_DEVICE=/dev/"${OSD_DEVICE:5:-1}" \
   {% endif -%}
+  --name=ceph-osd-"$1" \
   {{ ceph_osd_docker_extra_env }} \
   {{ ceph_docker_registry }}/{{ ceph_docker_image }}:{{ ceph_docker_image_tag }}
