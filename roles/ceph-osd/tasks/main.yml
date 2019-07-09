@@ -33,6 +33,12 @@
 - name: include_tasks common.yml
   include_tasks: common.yml
 
+- name: set noup flag
+  command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd set noup"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: True
+  changed_when: False
+
 - name: include container_options_facts.yml
   include_tasks: container_options_facts.yml
 
@@ -50,6 +56,12 @@
 
 - name: include_tasks start_osds.yml
   include_tasks: start_osds.yml
+
+- name: unset noup flag
+  command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd unset noup"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: True
+  changed_when: False
 
 - name: set_fact openstack_keys_tmp - preserve backward compatibility after the introduction of the ceph_keys module
   set_fact:
