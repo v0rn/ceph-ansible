@@ -20,6 +20,8 @@
       package:
         name: net-tools
         state: present
+      register: result
+      until: result is succeeded
       when:
         - not is_atomic
 
