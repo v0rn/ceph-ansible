@@ -9,6 +9,24 @@
   with_items:
     - /etc/grafana
     - /var/lib/grafana
+    - /var/lib/grafana/plugins
+
+- name: Install grafana plugins
+  shell: |
+    wget -nv "https://grafana.com/api/plugins/{{ item }}/versions/latest/download" -O "/tmp/{{ item }}.zip"
+    TMPDIR=$(mktemp -d)
+    unzip -q "/tmp/{{ item }}.zip" -d $TMPDIR/
+    mv $TMPDIR/* "/var/lib/grafana/plugins/{{ item }}"
+    rm -rf $TMPDIR "/tmp/{{ item }}.zip"
+  with_items: "{{ grafana_plugins }}"
+
+- name: Fix grafana plugins owner/group
+  file:
+    path: "/var/lib/grafana/plugins"
+    state: directory
+    owner: "{{ grafana_uid }}"
+    group: "{{ grafana_uid }}"
+    recurse: true
 
 - name: ship systemd service
   template:
